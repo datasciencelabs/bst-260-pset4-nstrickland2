@@ -16,7 +16,7 @@ census_key <- "A_CENSUS_KEY_THAT_WORKS"
 Write a first line of code for your problem set that defines `census_key` by running the code in the file `census-key.R`.
 
 ```{r}
-## Your code here
+census_key <- source("census-key.R") # gets census_key from census-key.R file
 ```
 
 2. The [US Census API User Guide](https://www.census.gov/content/dam/Census/data/developers/api-user-guide/api-user-guide.pdf)
@@ -35,32 +35,36 @@ https://api.census.gov/data/2021/pep/population?get=POP_2020,POP_2021,NAME&for=s
 
 Create an object called `request` of class `httr2_request` with this URL as an endpoint.
 Hint: Print out `request` to check that the URL matches what we want.
-
 ```{r}
 #| message: false
 #| warning: false
 library(httr2)
-#request <- 
+request <- request(url) |>
+  req_url_query(
+    get = "POP_2020,POP_2021,NAME",
+    `for`="state:*",
+    key = census_key$value)
+request
 ```
 
 3. Make a request to the US Census API using the `request` object. Save the response to and object named `response`. Check the response status of your request and make sure it was successful. You can learn about _status codes_ [here](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes).
 
-
 ```{r}
-#response <- 
+response <- request |> req_perform()
+response$status_code # successful code is 200
 ```
 
 4. Use a function from the **httr2** package to determine the content type of your response.
 
 ```{r}
-# Your code here
+resp_content_type(response)
 ```
 
 5. Use just one line of code and one function to extract the data into a matrix. 
 Hints: 1) Use the `resp_body_json` function. 2) The first row of the matrix will be the variable names and this OK as we will fix in the next exercise.
 
 ```{r}
-#population <- 
+population <- resp_body_json(response,simplifyVector = TRUE) # converts each list into a column and the elements of the list into the cells of the matrix
 ```
 
 6. Examine the `population` matrix you just created. Notice that 1) it is not tidy, 2) the column types are not what we want, and 3) the first row is a header. Convert `population` to a tidy dataset. Remove the state ID column and change the name of the column with state names to `state_name`. Add a column with state abbreviations called `state`. Make sure you assign the abbreviations for DC and PR correctly. Hint: Use the **janitor** package to make the first row the header. 
@@ -70,15 +74,18 @@ Hints: 1) Use the `resp_body_json` function. 2) The first row of the matrix will
 #| warning: false
 library(tidyverse)
 library(janitor)
-#population <- population |> ## Use janitor row to names function
-  # convert to tibble
-  # remove stat column
-  # rename state column to state_name
-  # use pivot_longer to tidy
-  # remove POP_ from year
-  # parese all relevant colunns to numeric
-  # add state abbreviations using state.abb variable
+population <- population |> row_to_names(row_number = 1) |> # Use janitor row to names function
+  as_tibble() |> # convert to tibble
+  select(-state) |>  # remove state column
+  rename(state_name = NAME) |> # rename state column to state_name
+  pivot_longer(starts_with("POP_"), names_to = "Year", values_to = "Population") |> # increase number of rows and decrease number of columns so there are two rows per state
+  mutate(Year = str_remove(Year, "POP_")) |> # remove POP_ from year
+  mutate(state = case_when(state_name == "Puerto Rico"~"PR", state_name == "District of Columbia" ~ "DC",
+  TRUE ~ state.abb[match(state_name, state.name)]), # add state abbreviations using state.abb variable
   # use case_when to add abbreviations for DC and PR
+  Population = as.numeric(Population),
+  Year = as.numeric(Year)) 
+ # parse all relevant columns to numeric
 ```
 
 7. As a check, make a barplot of states' 2021 and 2022 populations. Show the state names in the y-axis ordered by population size.  Hint: You will need to use `reorder` and use `facet_wrap`.
@@ -88,7 +95,6 @@ library(janitor)
   # reorder state
   # assign aesthetic mapping
   # use geom_col to plot barplot
-  # flip coordinates
   # facet by year
 ```
 
