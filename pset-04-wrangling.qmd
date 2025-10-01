@@ -88,9 +88,7 @@ population <- population |>
   TRUE ~ state.abb[match(state_name, state.name)]), # add state abbreviations using state.abb variable
   # use case_when to add abbreviations for DC and PR
   population = as.numeric(population),
-  year = as.numeric(year)) |> # parse all relevant columns to numeric
-  print()
-
+  year = as.numeric(year)) # parse all relevant columns to numeric
 ```
 
 7. As a check, make a barplot of states' 2021 and 2022 populations. Show the state names in the y-axis ordered by population size.  Hint: You will need to use `reorder` and use `facet_wrap`.
@@ -125,15 +123,14 @@ regions <- url |>
   unnest(c(state_name, region)) |> # display the elements in the nested lists
   mutate(region_name = case_when(region_name == "New York and New Jersey, Puerto Rico, Virgin Islands" ~ "Other",
          TRUE ~ region_name)) |> # keep all other region names unchanged 
-  as.data.frame() |>
-  print()
+  as.data.frame() 
 ```
 
 9. Add a region and region name columns to the `population` data frame.
 
 ```{r}
-population <- left_join(population, regions, by = "state_name") |> # keep all rows in population and add the rows from region that overlap with population data frame 
-  print()
+population <- left_join(population, regions, by = "state_name") # keep all rows in population and add the rows from region that overlap with population data frame 
+  
 ```
 
 
@@ -143,10 +140,10 @@ We see exactly 1,000 rows. We should be seeing over $52 \times 3$ rows per state
 ```{r}
 api <- "https://data.cdc.gov/resource/pwn4-m3yp.json"
 
-request(api) |> # get HTTP GET request
+cases_raw <- request(api) |> # get HTTP GET request
   req_perform() |> # send request to CDC website
   resp_body_string() |> # extract data and returns in plain text
-  fromJSON()
+  fromJSON() # convert into data frame
 ```
 
 
@@ -157,15 +154,15 @@ api <- "https://data.cdc.gov/resource/pwn4-m3yp.json"
 
 library(lubridate)
 cases_raw <- request(api) |> # form request
-  req_url_query(`$limit` = 10000000000) |> 
+  req_url_query(`$limit` = 10000000000) |> # increase rate limit so large data can get extracted
   req_perform() |> # send request to CDC website
   resp_body_string() |> # extract data from server and returns in plain text form
-  fromJSON() |>
+  fromJSON() |> # convert into dataframe
   drop_na(state,end_date,new_cases)|> # drop all missing values
   rename(date = end_date, 
          cases = new_cases) |>
   mutate(cases = as.numeric(cases), date = as.Date(date)) |> # convert  cases to be numeric and reassign to cases and convert date to ISO-8601 format (YYYY-MM-DD)
-  select(state, date, cases) |> print()
+  select(state, date, cases)
 ```
 
 
@@ -214,8 +211,7 @@ deaths <- request(deaths_url) |> # creates HTTP GET request
          date = end_date) |>
   mutate(deaths = as.numeric(deaths),
          date = as.Date(date)) |>
-  select(state, date, deaths) |>
-  print()
+  select(state, date, deaths)
 ```
 
 15. Using the `deaths` dataset you created, make a bar plot showing the total COVID-19 deaths by state. Show only the top 10 states with the highest death counts. Order the bars from highest to lowest and use appropriate labels and title.
