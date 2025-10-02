@@ -120,16 +120,8 @@ regions <- url |>
   map_df(as.data.frame) |> # get data as a dataframe
   rename(state_name = states) |>
   unnest(c(state_name, region)) |> # display the elements in the nested lists
+  filter(!(state_name %in% c("Virgin Islands", "American Samoa", "Commonwealth of the Northern Mariana Islands", "Federated States of Micronesia", "Guam", "Marshall Islands", "Republic of Palau"))) |> # remove places that aren't the 50 states, PR, or DC
   mutate(region_name = case_when(region_name == "New York and New Jersey, Puerto Rico, Virgin Islands" ~ "Other", TRUE ~ region_name)) # keep all other region names unchanged 
-
-
-#regions <- url |>
-  #fromJSON() |>  # use jsonlite JSON parser; this automatically downloads and parses the JSON into a data frame
-  #rename(state_name = states) |>
-  #unnest(c(state_name, region)) |> # display the elements in the nested lists
-  #mutate(region_name = case_when(region_name == "New York and New Jersey, Puerto Rico, Virgin Islands" ~ "Other",
-         #TRUE ~ region_name)) |> # keep all other region names unchanged 
-  #as.data.frame() 
 ```
 
 9. Add a region and region name columns to the `population` data frame.
