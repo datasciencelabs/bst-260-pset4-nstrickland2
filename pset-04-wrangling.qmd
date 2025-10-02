@@ -116,19 +116,26 @@ library(purrr)
 url <- "https://github.com/datasciencelabs/2025/raw/refs/heads/main/data/regions.json"
 
 regions <- url |>
-  fromJSON() |>  # use jsonlite JSON parser; this automatically downloads and parses the JSON into a data frame
+  fromJSON(simplifyDataFrame =FALSE) |> # use jsonlite JSON parser
+  map_df(as.data.frame) |> # get data as a dataframe
   rename(state_name = states) |>
   unnest(c(state_name, region)) |> # display the elements in the nested lists
-  mutate(region_name = case_when(region_name == "New York and New Jersey, Puerto Rico, Virgin Islands" ~ "Other",
-         TRUE ~ region_name)) |> # keep all other region names unchanged 
-  as.data.frame() 
+  mutate(region_name = case_when(region_name == "New York and New Jersey, Puerto Rico, Virgin Islands" ~ "Other", TRUE ~ region_name)) # keep all other region names unchanged 
+
+
+#regions <- url |>
+  #fromJSON() |>  # use jsonlite JSON parser; this automatically downloads and parses the JSON into a data frame
+  #rename(state_name = states) |>
+  #unnest(c(state_name, region)) |> # display the elements in the nested lists
+  #mutate(region_name = case_when(region_name == "New York and New Jersey, Puerto Rico, Virgin Islands" ~ "Other",
+         #TRUE ~ region_name)) |> # keep all other region names unchanged 
+  #as.data.frame() 
 ```
 
 9. Add a region and region name columns to the `population` data frame.
 
 ```{r}
 population <- left_join(population, regions, by = "state_name") # keep all rows in population and add the rows from region that overlap with population data frame 
-  
 ```
 
 
@@ -140,8 +147,9 @@ api <- "https://data.cdc.gov/resource/pwn4-m3yp.json"
 
 cases_raw <- request(api) |> # get HTTP GET request
   req_perform() |> # send request to CDC website
-  resp_body_string() |> # extract data and returns in plain text
-  fromJSON() # convert into data frame
+  resp_body_json(simplifyDataFrame=TRUE) # convert into data frame
+
+nrow(cases_raw) # not all cases are in the dataset
 ```
 
 
@@ -154,8 +162,7 @@ library(lubridate)
 cases_raw <- request(api) |> # form request
   req_url_query(`$limit` = 10000000000) |> # increase rate limit so large data can get extracted
   req_perform() |> # send request to CDC website
-  resp_body_string() |> # extract data from server and returns in plain text form
-  fromJSON() |> # convert into dataframe
+  resp_body_json(simplifyDataFrame=TRUE) |> # convert into dataframe
   drop_na(state,end_date,new_cases)|> # drop all missing values
   rename(date = end_date, 
          cases = new_cases) |>
@@ -186,7 +193,8 @@ cases_raw |>
          month = month(date, label=TRUE)) |> # extracts month from date and then convert to month name using label=TRUE
   select(year, month, cases) |>
   group_by(year, month) |>
-  summarize(total_cases = sum(cases)) |>
+  summarize(total_cases = sum(cases, na.rm=TRUE),
+            .groups = "drop") |>
   kable()
 ```
 
@@ -201,10 +209,9 @@ Use **httr2** to download COVID-19 death data from this endpoint. Make sure to r
 deaths <- request(deaths_url) |> # creates HTTP GET request
   req_url_query(`$limit`= 10000000000) |> # removes default limit by setting limit to a large number
   req_perform() |> # send request to API web server, CDC
-  resp_body_string() |> # returns data in plain text form
-  fromJSON() |> # returns data as a dataframe
+  resp_body_json(simplifyDataFrame = TRUE) |> # returns data as a dataframe
   drop_na(covid_19_deaths, end_date) |>
-  filter(state != "United States") |> # filter out U.S. from state variable
+  filter(state != "United States" & state != "New York City") |> # filter out U.S. and New York City from state variable
   rename(deaths = covid_19_deaths,
          date = end_date) |>
   mutate(deaths = as.numeric(deaths),
